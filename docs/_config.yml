@@ -1,0 +1,10 @@
+title: reheat
+description: >
+  Open source Python CLI for SEO analysis. Pull Google Search Console queries,
+  cluster by semantic intent, and surface content gaps and opportunities.
+url: https://bayinfosys.github.io
+baseurl: /reheat
+theme: minima
+author:
+  name: Edward Grundy
+  url: https://bayis.co.uk
