@@ -4,8 +4,7 @@ Python CLI for SEO analysis. Pulls search queries from Google Search Console,
 enriches them with related searches and People Also Ask data, clusters by
 semantic intent, and surfaces content gaps and opportunities.
 
-Built by [Edward Grundy](https://bayis.co.uk) at
-[Bay Information Systems](https://bayis.co.uk).
+Built by [Edward Grundy](https://bayis.co.uk) at [Bay Information Systems](https://bayis.co.uk).
 
 - Install: `pip install reheat`
 - Docs: [bayinfosys.github.io/reheat](https://bayinfosys.github.io/reheat)
@@ -77,11 +76,12 @@ reheat sources create \
 reheat runs create
 
 # Enrich and process
+reheat enrich adjacent
 reheat enrich tags
 reheat enrich embed
 reheat enrich cluster
-reheat enrich gap
 reheat analyse opportunities
+reheat analyse summarise
 
 # Build report data
 reheat project create
@@ -137,10 +137,10 @@ reheat config show / set
 reheat sources create / list / show / update / delete / auth
 reheat runs create / list / show / delete
 reheat enrichments list / show / delete
-reheat enrich tags / embed / cluster / gap
-reheat analyse summarise / opportunities
+reheat enrich adjacent / tags / embed / cluster
+reheat analyse opportunities / summarise
 reheat project create / read
-reheat report scatter / summary / coverage  create / read
+reheat report scatter / summary / coverage / opportunities / overlaps  create / read
 reheat serve
 ```
 
@@ -185,5 +185,4 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Built by [Edward Grundy](https://bayis.co.uk) -- 
-[Bay Information Systems](https://bayis.co.uk)
+Built by Edward Grundy [Bay Information Systems](https://bayis.co.uk)

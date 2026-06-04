@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reheat -- queries</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+
+  <header></header>
+
+  <div class="page-header">
+    <h2>Queries</h2>
+    <a class="back" id="back-link" href="/static/index.html">&larr; Back</a>
+  </div>
+
+  <p class="queries-hint">Click a column header to sort.</p>
+
+  <table class="data-table" id="queries-table" style="display:none">
+    <thead>
+      <tr>
+        <th data-col="query"       data-type="str">Query</th>
+        <th data-col="impressions" data-type="num">Impressions</th>
+        <th data-col="clicks"      data-type="num">Clicks</th>
+        <th data-col="ctr"         data-type="num">CTR</th>
+        <th data-col="position"    data-type="num">Position</th>
+      </tr>
+    </thead>
+    <tbody id="queries-body"></tbody>
+  </table>
+  <p id="queries-empty" class="loading">Loading...</p>
+
+</div>
+
+<template id="tpl-query-row">
+  <tr>
+    <td class="col-query"></td>
+    <td class="col-impressions"></td>
+    <td class="col-clicks"></td>
+    <td class="col-ctr"></td>
+    <td class="col-position"></td>
+  </tr>
+</template>
+
+<script type="module" src="/static/queries.js"></script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reheat -- enrichments</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+
+  <header></header>
+
+  <div class="page-header">
+    <h2>Enrichments</h2>
+    <a class="back" id="back-link" href="/static/index.html">&larr; Back</a>
+  </div>
+
+  <div class="enrichments-layout">
+    <div class="enrichment-nav">
+      <div class="enrichment-nav-title">Type</div>
+      <div id="enrichment-nav-items">
+        <p class="loading">Loading...</p>
+      </div>
+    </div>
+    <div class="enrichment-detail" id="enrichment-detail">
+      <p class="loading">Select a type to view its data.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- nav -->
+<template id="tpl-nav-item">
+  <div class="enrichment-nav-item">
+    <span class="nav-label"></span>
+  </div>
+</template>
+
+<!-- detail header -->
+<template id="tpl-detail-header">
+  <div class="enrichment-detail-header">
+    <h3 class="detail-title"></h3>
+    <div class="enrichment-meta">
+      <span class="detail-derived"></span>
+      &middot;
+      <span class="detail-created"></span>
+    </div>
+  </div>
+</template>
+
+<!-- serp -->
+<template id="tpl-serp-item">
+  <div class="serp-item">
+    <div class="serp-query"></div>
+    <div class="serp-paa">
+      <div class="serp-group-label">People also ask</div>
+      <div class="serp-chips paa-chips"></div>
+    </div>
+    <div class="serp-related">
+      <div class="serp-group-label">Related searches</div>
+      <div class="serp-chips related-chips"></div>
+    </div>
+  </div>
+</template>
+
+<!-- tags table row -->
+<template id="tpl-tag-row">
+  <tr>
+    <td class="col-query"></td>
+    <td class="col-tags"></td>
+  </tr>
+</template>
+
+<!-- embeddings table row -->
+<template id="tpl-embedding-row">
+  <tr>
+    <td class="col-query"></td>
+    <td class="col-type"></td>
+    <td class="col-length"></td>
+  </tr>
+</template>
+
+<!-- cluster block -->
+<template id="tpl-cluster-block">
+  <div class="cluster-block">
+    <div class="cluster-block__title">
+      <strong class="cluster-id"></strong>
+      <span class="cluster-block__meta cluster-count"></span>
+    </div>
+    <div class="cluster-block__queries"></div>
+  </div>
+</template>
+
+<!-- cluster query line -->
+<template id="tpl-cluster-query">
+  <div class="cluster-query-line"></div>
+</template>
+
+<!-- gap item -->
+<template id="tpl-gap-item">
+  <div class="gap-item">
+    <div class="gap-seed"></div>
+    <div class="gap-chips"></div>
+  </div>
+</template>
+
+<!-- opportunity item -->
+<template id="tpl-opp-item">
+  <div class="opp-item">
+    <span class="opp-query"></span>
+    <span class="opp-score"></span>
+    <span class="opp-rec"></span>
+  </div>
+</template>
+
+<!-- summary block -->
+<template id="tpl-summary-block">
+  <div class="summary-block">
+    <div class="summary-block__label"></div>
+    <div class="summary-block__description"></div>
+    <div class="summary-block__meta"></div>
+    <div class="summary-block__chips"></div>
+  </div>
+</template>
+
+<script type="module" src="/static/enrichments.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reheat</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+
+  <header>
+  </header>
+
+  <div class="explorer">
+    <div class="run-list">
+      <div class="run-list-header">Runs</div>
+      <div id="run-list-items">
+        <p class="loading" style="padding:1rem">Loading...</p>
+      </div>
+    </div>
+    <div class="run-detail" id="run-detail">
+      <p class="run-detail__empty">Select a run to view details.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- templates -->
+
+<template id="tpl-run-item">
+  <div class="run-item">
+    <div class="run-item__id"></div>
+    <div class="run-item__meta"></div>
+    <div class="run-item__badges"></div>
+  </div>
+</template>
+
+<template id="tpl-badge">
+  <span class="badge"></span>
+</template>
+
+<template id="tpl-run-detail">
+  <div>
+    <div class="run-detail__header">
+      <div>
+        <div class="run-detail__title"></div>
+        <div class="run-detail__subtitle"></div>
+      </div>
+      <div class="run-detail__actions"></div>
+    </div>
+    <div class="stat-row">
+      <div class="meta-item">
+        <span class="value stat-queries"></span>
+        <span class="label">Queries</span>
+      </div>
+      <div class="meta-item">
+        <span class="value stat-impressions"></span>
+        <span class="label">Impressions</span>
+      </div>
+      <div class="meta-item">
+        <span class="value stat-clicks"></span>
+        <span class="label">Clicks</span>
+      </div>
+      <div class="meta-item">
+        <span class="value stat-enrichments"></span>
+        <span class="label">Enrichments</span>
+      </div>
+    </div>
+    <div class="enrichments-section">
+      <h3>Enrichments</h3>
+      <div class="enrichment-list"></div>
+    </div>
+    <div class="queries-section">
+      <h3>Top queries by impressions</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Query</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>CTR</th>
+            <th>Position</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-btn-report">
+  <a class="btn" href="">View Report</a>
+</template>
+
+<template id="tpl-btn-no-report">
+  <span class="btn btn--outline" style="cursor:default;opacity:0.5">No report yet</span>
+</template>
+
+<template id="tpl-query-row">
+  <tr>
+    <td class="col-query"></td>
+    <td class="col-impressions"></td>
+    <td class="col-clicks"></td>
+    <td class="col-ctr"></td>
+    <td class="col-position"></td>
+  </tr>
+</template>
+
+<script type="module" src="/static/index.js"></script>
+</body>
+</html>
