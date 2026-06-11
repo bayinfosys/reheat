@@ -1,3 +1,5 @@
+![reheat](imgs/reheat02-upscale01.jpeg)
+
 # reheat
 
 Python CLI for SEO analysis. Pulls search queries from Google Search Console,
@@ -23,7 +25,7 @@ python -m venv venv && source venv/bin/activate
 pip install reheat
 ```
 
-Requires Python 3.10+.
+See [GETTING_STARTED.md](GETTING_STARTED.md) for a full walkthrough including Google Cloud setup and SerpAPI configuration.
 
 ### 2. Start a postgres instance
 
