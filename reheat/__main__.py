@@ -18,6 +18,9 @@ def main():
         level=logging.DEBUG if getattr(args, "verbose", False) else logging.INFO,
     )
 
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     try:
         backend = init_backend(getattr(args, "config", None))
     except Exception as e:
