@@ -1,4 +1,4 @@
-![reheat](imgs/reheat02-upscale01.png)
+![reheat](imgs/reheat02-upscale01.jpeg)
 
 # reheat
 
