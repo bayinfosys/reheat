@@ -1,12 +1,19 @@
 import logging
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
 from typing import List
 
-from reheat.state.execution import Enrichment, QueryRecord
 from reheat.pipeline.transform import to_embedding_text
-from reheat.providers.base import EmbeddingProvider
+from reheat.providers.embeddings import EmbeddingProvider
+from reheat.state import QueryRecord
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EmbeddingResult:
+    embeddings: List[dict] = field(default_factory=list)
+    adjacent_embeddings: List[dict] = field(default_factory=list)
+    model_name: str = ""
 
 
 def embed_queries(
@@ -14,9 +21,16 @@ def embed_queries(
     provider: EmbeddingProvider,
     adjacent_data: dict,
     tags_data: dict,
-    user_id: str = "default",
-    run_id: str = "",
-) -> Enrichment:
+) -> EmbeddingResult:
+    """
+    Embed seed queries and adjacent queries into the same vector space.
+
+    adjacent_data is the merged dict from _get_adjacent_data:
+        {seed_query: {"related": [...]}}
+
+    Returns an EmbeddingResult with seed and adjacent embedding lists
+    and the model name used.
+    """
     exclude = {"auto:ai-generated", "auto:zero-impression"}
 
     to_embed = [
@@ -29,47 +43,34 @@ def embed_queries(
         len(queries) - len(to_embed),
     )
 
-    # seed embeddings
     seed_texts = [to_embedding_text(q.query, "main") for q in to_embed]
     seed_vectors = provider.embed(seed_texts)
     embeddings = [
         {"query": q.query, "vector": v} for q, v in zip(to_embed, seed_vectors)
     ]
 
-    # adjacent embeddings from serp enrichment
     seen = {q.query for q in to_embed}
     adjacent = []
-    for query_data in adjacent_data.get("queries", {}).values():
-        for paa in query_data.get("paa", []):
-            if paa and paa not in seen:
-                adjacent.append(("paa", paa))
-                seen.add(paa)
-        for related in query_data.get("related", []):
+    for data in adjacent_data.values():
+        for related in data.get("related", []):
             if related and related not in seen:
-                adjacent.append(("related", related))
+                adjacent.append(related)
                 seen.add(related)
 
     adjacent_embeddings = []
     if adjacent:
-        adj_texts = [to_embedding_text(q, t) for t, q in adjacent]
+        adj_texts = [to_embedding_text(q, "related") for q in adjacent]
         adj_vectors = provider.embed(adj_texts)
         adjacent_embeddings = [
-            {"query": q, "type": t, "vector": v}
-            for (t, q), v in zip(adjacent, adj_vectors)
+            {"query": q, "type": "related", "vector": v}
+            for q, v in zip(adjacent, adj_vectors)
         ]
         logger.info("embedded %d adjacent queries", len(adjacent_embeddings))
 
     logger.info("embedded %d seed queries", len(embeddings))
 
-    return Enrichment(
-        user_id=user_id,
-        run_id=run_id,
-        enrichment_type="embeddings",
-        layer="silver",
-        data={
-            "embeddings": embeddings,
-            "adjacent_embeddings": adjacent_embeddings,
-        },
-        derived_from=["serp", "tags"],
-        created_at=datetime.now(timezone.utc),
+    return EmbeddingResult(
+        embeddings=embeddings,
+        adjacent_embeddings=adjacent_embeddings,
+        model_name=provider.model_name,
     )

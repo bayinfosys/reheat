@@ -1,5 +1,3 @@
-import { mountHeader } from "/static/header.js";
-
 export function posClass(position) {
   if (position <= 10) return "pos-good";
   if (position <= 30) return "pos-ok";
@@ -45,21 +43,25 @@ const API = {
   },
 
   enrichments: {
-    list:   (run_id)                  => API._get(`/enrichments/${run_id}`),
-    show:   (run_id, enrichment_type) => API._get(`/enrichments/${run_id}/${enrichment_type}`),
-    delete: (run_id, enrichment_type) => API._delete(`/enrichments/${run_id}/${enrichment_type}`),
+    list:   (run_id)                           => API._get(`/enrichments/${run_id}`),
+    show:   (run_id, enrichment_type, source_id = "default") =>
+              API._get(`/enrichments/${run_id}/${enrichment_type}/${source_id}`),
+    delete: (run_id, enrichment_type, source_id = "default") =>
+              API._delete(`/enrichments/${run_id}/${enrichment_type}/${source_id}`),
   },
 
   enrich: {
-    tags:    (run_id)    => API._post("/enrich/tags",    { run_id }),
-    embed:   (run_id)    => API._post("/enrich/embed",   { run_id }),
-    cluster: (run_id, k) => API._post("/enrich/cluster", { run_id, k }),
-    gap:     (run_id)    => API._post("/enrich/gap",     { run_id }),
+    adjacent: (run_id)    => API._post("/enrich/adjacent", { run_id }),
+    tags:     (run_id)    => API._post("/enrich/tags",     { run_id }),
+    embed:    (run_id)    => API._post("/enrich/embed",    { run_id }),
+    cluster:  (run_id, k) => API._post("/enrich/cluster",  { run_id, k }),
   },
 
   analyse: {
     opportunities: (run_id) => API._post("/analyse/opportunities", { run_id }),
     summarise:     (run_id) => API._post("/analyse/summarise",     { run_id }),
+    schedule:      (run_id) => API._post("/analyse/schedule",      { run_id }),
+    overview:      (run_id) => API._post("/analyse/overview",      { run_id }),
   },
 
   project: {
@@ -73,6 +75,8 @@ const API = {
     coverage:      { read: (run_id) => API._get(`/report/coverage/${run_id}`)      },
     opportunities: { read: (run_id) => API._get(`/report/opportunities/${run_id}`) },
     overlaps:      { read: (run_id) => API._get(`/report/overlaps/${run_id}`)      },
+    schedule:      { read: (run_id) => API._get(`/report/schedule/${run_id}`)      },
+    overview:      { read: (run_id) => API._get(`/report/overview/${run_id}`)      },
   },
 
 };

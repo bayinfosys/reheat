@@ -1,15 +1,17 @@
+import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
-from reheat.state.execution import QueryRecord, SourceConfig
+from typing import Any, List
+
+from reheat.state import QueryRecord, SourceConfig
 
 
 class SourceProvider(ABC):
     """
     Base class for data source providers.
 
-    Each provider knows how to:
-    - validate its configuration
-    - execute a fetch and return QueryRecords
+    Providers read all secrets and file paths from environment variables
+    at call time. Nothing is stored in SourceConfig.credentials.
+    The caller is responsible for setting and securing all env vars.
     """
 
     source_type: str = ""
@@ -20,8 +22,8 @@ class SourceProvider(ABC):
 
     def validate(self) -> None:
         """
-        Raise ValueError if the SourceConfig is missing required credentials
-        or settings. Called at construction time.
+        Called at construction time. Raise SourceError if required env vars
+        are absent so misconfiguration is caught before any network call.
         """
         pass
 
@@ -33,17 +35,18 @@ class SourceProvider(ABC):
         """
         ...
 
-    def _credential(self, key: str) -> str:
-        """Return a credential value, raising ValueError if absent."""
-        value = self.config.credentials.get(key, "")
+    def _env(self, var: str) -> str:
+        """Return an env var value. Raise SourceError if unset or empty."""
+        value = os.environ.get(var, "")
         if not value:
-            raise ValueError(
-                f"source {self.config.source_id!r} missing credential {key!r}"
+            raise SourceError(
+                f"{var} is not set. "
+                f"Add it to your environment before running this command."
             )
         return value
 
     def _setting(self, key: str, default: Any = None) -> Any:
-        """Return a setting value with optional default."""
+        """Return a runtime setting from SourceConfig with an optional default."""
         return self.config.settings.get(key, default)
 
 

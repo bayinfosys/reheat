@@ -22,6 +22,7 @@ def cmd_serve(
 
     import threading
     import webbrowser
+
     from reheat.adapters.fastapi_adapter import build_app
 
     app = build_app()

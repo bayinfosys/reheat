@@ -3,28 +3,31 @@ from datetime import datetime, timezone
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Payload
-from reheat.state.execution import (
-    Enrichment,
-    ClusterModel,
-    ClusterAssignments,
-    RunModels,
-)
-from reheat.state import ENRICHMENTS_TABLE, MODELS_TABLE, get_user, get_user_id
 from reheat.commands.runs import _resolve_run
+from reheat.registry import Payload, command
+from reheat.state import (ENRICHMENTS_TABLE, MODELS_TABLE, ClusterAssignments,
+                          ClusterModel, Enrichment, RunModels, get_user,
+                          get_user_id)
 
 logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers -- public so report.py can import them
 # ---------------------------------------------------------------------------
 
-
-def get_enrichment(backend: DBBackend, run_id: str, enrichment_type: str):
-    return backend.get(
+def _get_latest_enrichment(backend: DBBackend, run_id: str, enrichment_type: str):
+    """Return the most recently created enrichment of the given type, any source."""
+    results = list(backend.query(
         ENRICHMENTS_TABLE, Enrichment,
-        user_id=get_user_id(backend), run_id=run_id, enrichment_type=enrichment_type,
-    )
+        user_id=get_user_id(backend),
+        run_id=run_id,
+        enrichment_type=enrichment_type,
+    ))
+    if not results:
+        return None
+    return max(results, key=lambda e: e.created_at or "")
+
 
 
 def resolve_model_id(backend: DBBackend, run_id: str) -> str:
@@ -76,16 +79,8 @@ def cmd_analyse_summarise(
     cluster_id: Payload[int] = 0,
     top_n: Payload[int] = 0,
 ) -> dict:
-    """
-    Generate natural language labels for each cluster using the configured
-    LLM provider. Labels are stored in the 'summaries' Enrichment record
-    and written back to ClusterModel.labels via read-modify-write so that
-    reports and the UI can reference them without loading the full enrichment.
-
-    If --model is omitted the most recently applied model for the run is used.
-    """
-    from reheat.pipeline.summarise import summarise_all
     from reheat.pipeline.cluster import ClusterAssignment
+    from reheat.pipeline.summarise import summarise_all
 
     run = _resolve_run(backend, run_id or None)
     user = get_user(backend)
@@ -148,21 +143,21 @@ def cmd_analyse_opportunities(
     run_id: Payload[str] = "",
     model_id: Payload[str] = "",
 ) -> dict:
-    from reheat.pipeline.gap import (
-        owned_set,
-        adjacent_map,
-        opportunity_scores,
-        overlapping_gaps,
-        gaps_per_seed,
-    )
+    from reheat.commands.enrich import _get_adjacent_data
+    from reheat.pipeline.gap import (adjacent_map, gaps_per_seed,
+                                     opportunity_scores, overlapping_gaps,
+                                     owned_set)
+
     SCORE_THRESHOLD = 5
 
     run = _resolve_run(backend, run_id or None)
 
-    adjacent_enrichment = get_enrichment(backend, run.run_id, "adjacent")
-    if adjacent_enrichment is None:
-        raise ValueError(
-            "no adjacent enrichment found -- run: reheat enrich adjacent"
+    adjacent_data = _get_adjacent_data(backend, run.run_id)
+    if not adjacent_data:
+        logger.warning(
+            "no adjacent enrichment found -- opportunities will be based on "
+            "seed queries only. Run reheat enrich adjacent to include PAA "
+            "and related search data."
         )
 
     mid = model_id or resolve_model_id(backend, run.run_id)
@@ -175,7 +170,7 @@ def cmd_analyse_opportunities(
     }
 
     owned = owned_set(run.queries)
-    adjacent = adjacent_map(adjacent_enrichment.data)
+    adjacent = adjacent_map(adjacent_data)
     impressions = {q.query: q.impressions for q in run.queries}
 
     opportunities = opportunity_scores(owned, adjacent, impressions)
@@ -229,4 +224,135 @@ def cmd_analyse_opportunities(
         "model_id":      mid,
         "opportunities": len(ranked),
         "top":           ranked[:10],
+    }
+
+
+@command(help="Generate content schedule from cluster and opportunity data")
+def cmd_analyse_schedule(
+    backend: DBBackend,
+    *,
+    run_id: Payload[str] = "",
+    model_id: Payload[str] = "",
+) -> dict:
+    from collections import defaultdict
+
+    from reheat.pipeline.schedule import ScheduleError, build_schedule
+
+    run  = _resolve_run(backend, run_id or None)
+    user = get_user(backend)
+    uid  = get_user_id(backend)
+
+    summaries_enrichment = _get_latest_enrichment(backend, run.run_id, "summaries")
+    if summaries_enrichment is None:
+        raise ValueError("no summaries -- run: reheat analyse summarise")
+
+    opps_enrichment = _get_latest_enrichment(backend, run.run_id, "opportunities")
+    if opps_enrichment is None:
+        raise ValueError("no opportunities -- run: reheat analyse opportunities")
+
+    summaries     = summaries_enrichment.data.get("summaries", [])
+    opportunities = opps_enrichment.data.get("opportunities", [])
+    high_value    = opps_enrichment.data.get("overlapping_gaps", [])
+
+    mid             = model_id or resolve_model_id(backend, run.run_id)
+    all_assignments = load_assignments(backend, run.run_id, mid)
+    adjacent_counts: dict = defaultdict(int)
+    for a in all_assignments:
+        if a.get("is_adjacent", False):
+            adjacent_counts[a["cluster_id"]] += 1
+
+    for s in summaries:
+        s["adjacent_count"] = adjacent_counts.get(s["cluster_id"], 0)
+
+    impressions = sum(q.impressions for q in run.queries)
+
+    try:
+        result = build_schedule(
+            domain=run.domain,
+            query_count=len(run.queries),
+            impressions=impressions,
+            summaries=summaries,
+            opportunities=opportunities,
+            high_value_topics=high_value,
+            user=user,
+        )
+    except ScheduleError as e:
+        raise ValueError(str(e)) from e
+
+    label_stats = {
+        s["label"]: {
+            "adjacent_count":    s.get("adjacent_count", 0),
+            "total_impressions": s.get("total_impressions", 0),
+        }
+        for s in summaries
+    }
+    for item in result.get("schedule", []):
+        stats = label_stats.get(item.get("cluster_label"), {})
+        item["adjacent_count"] = stats.get("adjacent_count", 0)
+        item["impressions"]    = stats.get("total_impressions", 0)
+
+    backend.save(ENRICHMENTS_TABLE, Enrichment(
+        user_id=uid,
+        run_id=run.run_id,
+        enrichment_type="schedule",
+        layer="gold",
+        data=result,
+        derived_from=["summaries", "opportunities"],
+        created_at=datetime.now(timezone.utc),
+    ))
+
+    return {
+        "run_id":    run.run_id,
+        "scheduled": len(result.get("schedule", [])),
+    }
+
+
+@command(help="Generate narrative overview from cluster and schedule data")
+def cmd_analyse_overview(
+    backend: DBBackend,
+    *,
+    run_id: Payload[str] = "",
+) -> dict:
+    from reheat.pipeline.schedule import ScheduleError, build_overview
+
+    run = _resolve_run(backend, run_id or None)
+    user = get_user(backend)
+
+    summaries_enrichment = _get_latest_enrichment(backend, run.run_id, "summaries")
+    if summaries_enrichment is None:
+        raise ValueError("no summaries -- run: reheat analyse summarise")
+
+    schedule_enrichment = _get_latest_enrichment(backend, run.run_id, "schedule")
+    if schedule_enrichment is None:
+        raise ValueError("no schedule -- run: reheat analyse schedule")
+
+    summaries   = summaries_enrichment.data.get("summaries", [])
+    schedule    = schedule_enrichment.data.get("schedule", [])
+    impressions = sum(q.impressions for q in run.queries)
+
+    try:
+        result = build_overview(
+            domain=run.domain,
+            query_count=len(run.queries),
+            impressions=impressions,
+            summaries=summaries,
+            schedule=schedule,
+            user=user,
+        )
+    except ScheduleError as e:
+        raise ValueError(str(e)) from e
+
+    backend.save(ENRICHMENTS_TABLE, Enrichment(
+        user_id=get_user_id(backend),
+        run_id=run.run_id,
+        enrichment_type="overview",
+        layer="gold",
+        data=result,
+        derived_from=["summaries", "schedule"],
+        created_at=datetime.now(timezone.utc),
+    ))
+
+    return {
+        "run_id":     run.run_id,
+        "paragraphs": len(result),
     }

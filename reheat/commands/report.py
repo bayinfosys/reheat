@@ -3,19 +3,14 @@ from datetime import datetime, timezone
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Payload, Resource
-from reheat.state.execution import (
-    ScatterData, SummaryData, CoverageData,
-    ProjectionData,
-)
-from reheat.state import REPORTS_TABLE, PROJECTIONS_TABLE, get_user_id
+from reheat.commands.analyse import (_get_latest_enrichment, get_user,
+                                     load_assignments, resolve_model_id)
+from reheat.commands.enrich import _get_adjacent_data
 from reheat.commands.runs import _resolve_run
-from reheat.commands.analyse import (
-    get_enrichment,
-    get_user,
-    resolve_model_id,
-    load_assignments,
-)
+from reheat.registry import Payload, Resource, command
+from reheat.state import (PROJECTIONS_TABLE, REPORTS_TABLE, CoverageData,
+                          ProjectionData, ScatterData, SummaryData,
+                          get_user_id)
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +39,17 @@ def cmd_report_scatter_create(
     if projection is None:
         raise ValueError("no projection found -- run: reheat project create")
 
-    embed_enrichment = get_enrichment(backend, run.run_id, "embeddings")
+    embed_enrichment = _get_latest_enrichment(backend, run.run_id, "embeddings")
     if embed_enrichment is None:
         raise ValueError("no embeddings found -- run: reheat enrich embed")
 
     mid = resolve_model_id(backend, run.run_id)
     all_assignments = load_assignments(backend, run.run_id, mid)
 
-    # split combined assignments into seed and adjacent for the scatter builder
-    seed_assignments = [a for a in all_assignments if not a.get("is_adjacent", False)]
+    seed_assignments     = [a for a in all_assignments if not a.get("is_adjacent", False)]
     adjacent_assignments = [a for a in all_assignments if a.get("is_adjacent", False)]
 
-    summaries_enrichment = get_enrichment(backend, run.run_id, "summaries")
+    summaries_enrichment = _get_latest_enrichment(backend, run.run_id, "summaries")
     summaries = summaries_enrichment.data.get("summaries", []) if summaries_enrichment else []
 
     datasets = build_scatter_data(
@@ -100,8 +94,8 @@ def cmd_report_summary_create(
 
     run = _resolve_run(backend, run_id or None)
 
-    adjacent = get_enrichment(backend, run.run_id, "adjacent")
-    opps = get_enrichment(backend, run.run_id, "opportunities")
+    adjacent_data = _get_adjacent_data(backend, run.run_id)
+    opps = _get_latest_enrichment(backend, run.run_id, "opportunities")
 
     mid = resolve_model_id(backend, run.run_id)
     all_assignments = load_assignments(backend, run.run_id, mid)
@@ -109,7 +103,7 @@ def cmd_report_summary_create(
 
     data = build_summary_data(
         run=run,
-        adjacent_data=adjacent.data if adjacent else {},
+        adjacent_data=adjacent_data,
         assignments=seed_assignments,
         opportunities=opps.data.get("opportunities", []) if opps else [],
     )
@@ -178,7 +172,7 @@ def cmd_report_opportunities_read(
     run_id: Resource[str] = "",
 ) -> dict:
     run = _resolve_run(backend, run_id or None)
-    enrichment = get_enrichment(backend, run.run_id, "opportunities")
+    enrichment = _get_latest_enrichment(backend, run.run_id, "opportunities")
     if enrichment is None:
         raise ValueError("no opportunities -- run: reheat analyse opportunities")
     return {"opportunities": enrichment.data.get("opportunities", [])}
@@ -190,12 +184,37 @@ def cmd_report_overlaps_read(
     *,
     run_id: Resource[str] = "",
 ) -> dict:
-    """
-    Overlapping gaps are now stored in the opportunities enrichment,
-    written by cmd_analyse_opportunities.
-    """
     run = _resolve_run(backend, run_id or None)
-    enrichment = get_enrichment(backend, run.run_id, "opportunities")
+    enrichment = _get_latest_enrichment(backend, run.run_id, "opportunities")
     if enrichment is None:
         raise ValueError("no opportunities enrichment -- run: reheat analyse opportunities")
     return {"overlapping_gaps": enrichment.data.get("overlapping_gaps", [])}
+
+
+@command(help="Read content schedule and narrative overview")
+def cmd_report_schedule_read(
+    backend: DBBackend,
+    *,
+    run_id: Resource[str] = "",
+) -> dict:
+    run = _resolve_run(backend, run_id or None)
+    enrichment = _get_latest_enrichment(backend, run.run_id, "schedule")
+    if enrichment is None:
+        raise ValueError("no schedule -- run: reheat analyse schedule")
+    return {
+        "overview": enrichment.data.get("overview", {}),
+        "schedule": enrichment.data.get("schedule", []),
+    }
+
+
+@command(help="Read narrative overview")
+def cmd_report_overview_read(
+    backend: DBBackend,
+    *,
+    run_id: Resource[str] = "",
+) -> dict:
+    run = _resolve_run(backend, run_id or None)
+    enrichment = _get_latest_enrichment(backend, run.run_id, "overview")
+    if enrichment is None:
+        raise ValueError("no overview -- run: reheat analyse overview")
+    return {"paragraphs": enrichment.data.get("paragraphs", [])}

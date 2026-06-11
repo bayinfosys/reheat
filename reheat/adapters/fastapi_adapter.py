@@ -3,15 +3,13 @@ import logging
 from importlib.resources import files
 from typing import Optional, get_type_hints
 
+from dynawrap.backends.base import DBBackend
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import create_model
 
-from dynawrap.backends.base import DBBackend
-
-
-from reheat.registry import Resource, Payload, registry
+from reheat.registry import Payload, Resource, registry
 from reheat.state import init_backend
 
 logger = logging.getLogger(__name__)
@@ -27,6 +25,7 @@ APP_METADATA = dict(
 
 def _static_dir() -> str:
     return str(files("reheat").joinpath("static"))
+
 
 STATIC_MOUNTS = [
     ("/static", _static_dir(), "static"),
@@ -91,24 +90,30 @@ def _make_get_handler(fn):
 
     params = []
     for name, typ, default in resources:
-        params.append(inspect.Parameter(
-            name,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=typ,
-        ))
+        params.append(
+            inspect.Parameter(
+                name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=typ,
+            )
+        )
     for name, typ, default in queries:
-        params.append(inspect.Parameter(
-            name,
+        params.append(
+            inspect.Parameter(
+                name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=Optional[typ],
+                default=default if default is not inspect.Parameter.empty else None,
+            )
+        )
+    params.append(
+        inspect.Parameter(
+            "backend",
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=Optional[typ],
-            default=default if default is not inspect.Parameter.empty else None,
-        ))
-    params.append(inspect.Parameter(
-        "backend",
-        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        annotation=DBBackend,
-        default=Depends(get_backend),
-    ))
+            annotation=DBBackend,
+            default=Depends(get_backend),
+        )
+    )
 
     async def handler(backend: DBBackend = Depends(get_backend), **kwargs):
         try:

@@ -3,16 +3,12 @@ import logging
 from collections import defaultdict
 from typing import Dict, List, Optional
 
-from reheat.providers.instruct import get_instruct_provider, ConfigError, InstructError
+from reheat.errors import ConfigError, InstructError, SummarisationError
 from reheat.pipeline.cluster import ClusterAssignment
-from reheat.state.execution import ClusterSummary, QueryRecord
-from reheat.state.user import UserState
+from reheat.providers.instruct import get_instruct_provider
+from reheat.state import ClusterSummary, QueryRecord, UserState
 
 logger = logging.getLogger(__name__)
-
-
-class SummarisationError(Exception):
-    """Raised when a cluster cannot be summarised."""
 
 
 SUMMARISE_PROMPT = """\
@@ -63,7 +59,9 @@ def summarise_cluster(
     top = _top_queries_by_impression(queries, metrics, user.summarise_top_n)
     logger.debug(
         "top %d queries for cluster %d: %s",
-        user.summarise_top_n, cluster_id, top,
+        user.summarise_top_n,
+        cluster_id,
+        top,
     )
 
     try:
@@ -74,10 +72,12 @@ def summarise_cluster(
     prompt = SUMMARISE_PROMPT.format(queries="\n".join(top))
 
     try:
-        content = provider.complete(prompt)
+        content = provider.complete(prompt, max_tokens=500)
         result = json.loads(content)
     except InstructError as e:
-        raise SummarisationError(f"instruct call failed for cluster {cluster_id}: {e}") from e
+        raise SummarisationError(
+            f"instruct call failed for cluster {cluster_id}: {e}"
+        ) from e
     except (json.JSONDecodeError, KeyError) as e:
         raise SummarisationError(
             f"could not parse LLM response for cluster {cluster_id}: {e}"
@@ -86,8 +86,7 @@ def summarise_cluster(
     total_impressions = sum(metrics[q].impressions for q in queries if q in metrics)
     total_clicks = sum(metrics[q].clicks for q in queries if q in metrics)
     positions = [
-        metrics[q].position for q in queries
-        if q in metrics and metrics[q].position > 0
+        metrics[q].position for q in queries if q in metrics and metrics[q].position > 0
     ]
     avg_position = sum(positions) / len(positions) if positions else 0.0
 
@@ -104,7 +103,10 @@ def summarise_cluster(
 
     logger.info(
         "cluster %d labelled: %r (%d queries, %d impressions)",
-        cluster_id, summary.label, summary.query_count, summary.total_impressions,
+        cluster_id,
+        summary.label,
+        summary.query_count,
+        summary.total_impressions,
     )
     return summary
 
@@ -115,34 +117,39 @@ def summarise_all(
     user: UserState,
     cluster_id: Optional[int] = None,
 ) -> List[ClusterSummary]:
-    """
-    Summarise all clusters, or a single cluster if cluster_id is given.
-
-    Groups assignments by cluster_id, calls summarise_cluster for each.
-    Only seed queries (is_adjacent=False) are used for label generation.
-    Returns summaries sorted by total_impressions descending.
-    Clusters that fail summarisation are logged as errors and skipped.
-    """
     metrics = _build_metrics_index(records)
 
-    grouped: Dict[int, List[str]] = defaultdict(list)
-    for assignment in assignments:
-        if not assignment.is_adjacent:
-            grouped[assignment.cluster_id].append(assignment.query)
+    seed_groups: Dict[int, List[str]] = defaultdict(list)
+    adjacent_groups: Dict[int, List[str]] = defaultdict(list)
 
-    target_ids = [cluster_id] if cluster_id is not None else sorted(grouped.keys())
+    for assignment in assignments:
+        if assignment.is_adjacent:
+            adjacent_groups[assignment.cluster_id].append(assignment.query)
+        else:
+            seed_groups[assignment.cluster_id].append(assignment.query)
+
+    all_cluster_ids = sorted({a.cluster_id for a in assignments})
+    target_ids = [cluster_id] if cluster_id is not None else all_cluster_ids
 
     logger.info(
-        "summarising %d cluster(s) with top_n=%d",
-        len(target_ids), user.summarise_top_n,
+        "summarising %d cluster(s) with top_n=%d (%d seed-only, %d adjacent-only)",
+        len(target_ids),
+        user.summarise_top_n,
+        sum(
+            1
+            for cid in target_ids
+            if seed_groups.get(cid) and not adjacent_groups.get(cid)
+        ),
+        sum(1 for cid in target_ids if not seed_groups.get(cid)),
     )
 
     summaries = []
     for cid in target_ids:
-        queries = grouped.get(cid, [])
+        queries = seed_groups.get(cid) or adjacent_groups.get(cid, [])
         if not queries:
-            logger.warning("cluster %d has no seed queries, skipping", cid)
+            logger.warning("cluster %d has no queries, skipping", cid)
             continue
+        is_adjacent_only = not seed_groups.get(cid)
         try:
             summary = summarise_cluster(
                 cluster_id=cid,
@@ -150,6 +157,10 @@ def summarise_all(
                 metrics=metrics,
                 user=user,
             )
+            if is_adjacent_only:
+                summary = summary.model_copy(
+                    update={"description": f"[adjacent-only] {summary.description}"}
+                )
             summaries.append(summary)
         except SummarisationError as e:
             logger.error("failed to summarise cluster %d: %s", cid, e)
@@ -157,6 +168,7 @@ def summarise_all(
     summaries.sort(key=lambda s: s.total_impressions, reverse=True)
     logger.info(
         "summarisation complete: %d/%d clusters labelled",
-        len(summaries), len(target_ids),
+        len(summaries),
+        len(target_ids),
     )
     return summaries

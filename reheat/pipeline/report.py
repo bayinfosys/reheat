@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from reheat.state.execution import RunRecord
+from reheat.state import RunRecord
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +89,14 @@ def build_summary_data(
     adjacent_data: dict,
     assignments: list,
     opportunities: list,
+    labels: dict = None,
 ) -> dict:
     """
     Build summary panel data from run and enrichments.
     Returns a dict matching SummaryData fields.
     """
     serp_queries = adjacent_data.get("queries", {})
+    labels = labels or {}
 
     # top performing -- queries with clicks
     top_performing = [
@@ -122,9 +124,11 @@ def build_summary_data(
         cluster_impressions[a["cluster_id"]] += imp
         query_to_cluster[a["cluster_id"]].append(a["query"])
 
+
     top_clusters = [
         {
             "cluster_id":  cid,
+            "label":       labels.get(str(cid), f"Cluster {cid}"),
             "impressions": imp,
             "query_count": len(query_to_cluster[cid]),
             "sample":      query_to_cluster[cid][:3],

@@ -1,7 +1,7 @@
 import json
+from typing import List, Literal, Tuple
 
 import numpy as np
-from typing import List, Tuple, Literal
 
 ProjectionMethod = Literal["umap", "tsne", "pca"]
 

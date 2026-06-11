@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Payload, Resource
-from reheat.state.execution import ProjectionData, Enrichment
-from reheat.state import get_user, get_user_id, PROJECTIONS_TABLE, ENRICHMENTS_TABLE
+from reheat.commands.analyse import _get_latest_enrichment
 from reheat.commands.runs import _resolve_run
+from reheat.registry import Payload, Resource, command
+from reheat.state import (ENRICHMENTS_TABLE, PROJECTIONS_TABLE, Enrichment,
+                          ProjectionData, get_user, get_user_id)
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +25,7 @@ def cmd_project_create(
     user = get_user(backend)
     method = method or user.projection_method
 
-    embed_enrichment = backend.get(
-        ENRICHMENTS_TABLE, Enrichment,
-        user_id=get_user_id(backend), run_id=run.run_id, enrichment_type="embeddings",
-    )
+    embed_enrichment = _get_latest_enrichment(backend, run.run_id, "embeddings")
     if embed_enrichment is None:
         raise ValueError("no embeddings -- run: reheat enrich embed")
 

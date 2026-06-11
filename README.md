@@ -1,127 +1,137 @@
-# Reheat
+# reheat
 
 Python CLI for SEO analysis. Pulls search queries from Google Search Console,
-enriches them with related searches and People Also Ask data, clusters by
-semantic intent, and surfaces content gaps and opportunities.
+enriches them with related searches via SerpAPI, clusters by semantic intent,
+and surfaces content gaps and opportunities.
 
 Built by [Edward Grundy](https://bayis.co.uk) at [Bay Information Systems](https://bayis.co.uk).
 
 - Install: `pip install reheat`
-- Docs: [bayinfosys.github.io/reheat](https://bayinfosys.github.io/reheat)
+- Source: [github.com/bayinfosys/reheat](https://github.com/bayinfosys/reheat)
 - PyPI: [pypi.org/project/reheat](https://pypi.org/project/reheat)
 
 ---
 
 ## Getting started
 
-### Install
+### 1. Install
 
 ```bash
 pip install reheat
+# or in a virtualenv:
+python -m venv venv && source venv/bin/activate
+pip install reheat
 ```
 
-Requires Python 3.10+. For the local web interface you also need a running
-postgres instance (or use the JSON file backend for local development
-without postgres).
+Requires Python 3.10+.
+
+### 2. Start a postgres instance
+
+reheat uses postgres to store runs, enrichments, and report data.
 
 ```bash
 docker run -d \
   --name reheat-pg \
+  --rm \
   -e POSTGRES_USER=reheat \
   -e POSTGRES_PASSWORD=reheat \
   -e POSTGRES_DB=reheat \
   -p 5432:5432 \
   postgres:16
-
-export DATABASE_URL=postgresql://reheat:reheat@localhost:5432/reheat
 ```
 
-### Configure a Google Search Console source
-
-Download OAuth2 credentials from Google Cloud Console (APIs and Services >
-Credentials > OAuth 2.0 Client IDs, Desktop app type) and save as
-`~/.reheat/google-search-console.json`. Then:
+### 3. Set environment variables
 
 ```bash
+# database
+export DATABASE_URL="postgresql://reheat:reheat@localhost:5432/reheat"
+
+# google search console (OAuth2 Desktop app credentials)
+export GOOGLE_CLIENT_SECRETS_PATH="/path/to/client_secrets.json"
+export GOOGLE_TOKEN_PATH="/path/to/token.json"
+
+# serpapi (optional, for related search enrichment)
+export SERPAPI_KEY="your-serpapi-key"
+
+# llm provider (one of the following)
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+The Google credentials file must be an OAuth 2.0 Client ID of type Desktop
+app. In Google Cloud Console go to APIs and Services > Credentials > Create
+Credentials > OAuth 2.0 Client ID, select Desktop app, and download the JSON
+file. Service account keys and web application credentials will not work.
+
+`GOOGLE_TOKEN_PATH` is where reheat writes the OAuth token after the first
+consent flow. Point it to a persistent location. The browser consent flow runs
+automatically on the first `reheat fetch` and is not required again until the
+token expires.
+
+### 4. Register sources
+
+```bash
+# google search console
 reheat sources create \
   --source-type google_search_console \
   --domain yourdomain.com \
-  --client-secrets-path ~/.reheat/google-search-console.json
-```
+  --days 180
 
-### Authenticate
-
-```bash
-reheat sources auth
-```
-
-Opens a browser for the Google OAuth2 consent flow. The token is persisted
-to `~/.reheat/gsc_token.json` and refreshed automatically on subsequent runs.
-
-### Configure a SerpAPI source (optional)
-
-Required for PAA and related search enrichment. Get an API key at
-[serpapi.com](https://serpapi.com).
-
-```bash
+# serpapi (optional)
 reheat sources create \
   --source-type serp \
-  --api-key YOUR_SERP_API_KEY
+  --domain google
 ```
 
-### Run the pipeline
+The `--days` flag sets the GSC lookback window (default 90, maximum ~480).
+The `--domain` flag on the serp source sets the search engine. Supported
+values: `google`, `youtube`, `google_patents`, `google_news`.
+
+### 5. Run the pipeline
 
 ```bash
-# Fetch queries from Search Console
-reheat runs create
-
-# Enrich and process
-reheat enrich adjacent
-reheat enrich tags
-reheat enrich embed
-reheat enrich cluster
-reheat analyse opportunities
-reheat analyse summarise
-
-# Build report data
-reheat project create
-reheat report scatter create
-reheat report summary create
-reheat report coverage create
-
-# Start the web interface
+reheat fetch
+reheat enrich
+reheat analyse
 reheat serve
 ```
 
 Open [http://localhost:8000](http://localhost:8000).
 
+The four commands cover the full pipeline. Individual steps are also
+available if you need to re-run a specific stage:
+
+```bash
+reheat fetch                      # pull queries from Google Search Console
+reheat enrich adjacent            # fetch related searches via SerpAPI
+reheat enrich tags                # auto-tag queries
+reheat enrich embed               # generate embeddings
+reheat enrich cluster             # cluster by semantic intent
+reheat analyse summarise          # label clusters with an LLM
+reheat analyse opportunities      # score content gaps
+reheat analyse schedule           # generate content schedule
+reheat analyse overview           # generate narrative summary
+reheat project create             # compute UMAP projection
+reheat report scatter create      # build scatter plot data
+reheat report summary create      # build summary panel data
+reheat report coverage create     # build coverage table data
+reheat serve                      # start the web interface
+```
+
 ---
 
 ## Inference providers
 
-`reheat analyse summarise` labels intent clusters using an LLM. Configure
-one of the following.
-
-### OpenAI
-
-Set `OPENAI_API_KEY` in your environment or `.env` file, or:
+`reheat analyse` labels intent clusters and generates a content schedule
+using an LLM. Set one of the following environment variables.
 
 ```bash
-reheat config set --key openai_api_key --value sk-...
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
-
-### Anthropic
-
-Set `ANTHROPIC_API_KEY` in your environment or `.env` file, or:
-
-```bash
-reheat config set --key anthropic_api_key --value sk-ant-...
-```
-
-### Marigold
 
 [Marigold](https://marigold.run) is a private inference API built by
-Bay Information Systems. Set endpoint and key when available:
+Bay Information Systems. Configure it in reheat user settings:
 
 ```bash
 reheat config set --key marigold_endpoint --value https://api.marigold.run
@@ -133,15 +143,24 @@ reheat config set --key marigold_api_key --value <key>
 ## CLI reference
 
 ```
-reheat config show / set
-reheat sources create / list / show / update / delete / auth
-reheat runs create / list / show / delete
-reheat enrichments list / show / delete
-reheat enrich adjacent / tags / embed / cluster
-reheat analyse opportunities / summarise
-reheat project create / read
-reheat report scatter / summary / coverage / opportunities / overlaps  create / read
+reheat fetch
+reheat enrich [adjacent | tags | embed | cluster]
+reheat analyse [summarise | opportunities | schedule | overview]
+reheat project [create | read]
+reheat report [scatter | summary | coverage | opportunities | overlaps] [create | read]
 reheat serve
+
+reheat sources [create | list | show | update | delete]
+reheat runs [list | show | delete]
+reheat config [show | set]
+reheat status
+```
+
+Pass `--json` before any command for machine-readable output:
+
+```bash
+reheat --json sources list
+reheat --json runs list
 ```
 
 ---
@@ -162,6 +181,8 @@ side effects.
 **Persistence** uses [dynawrap](https://github.com/bayinfosys/dynawrap),
 a lightweight key-value library with identical interfaces over PostgreSQL
 and DynamoDB. Tables are passed at call time; models are backend-agnostic.
+The backend is selected from `DATABASE_URL` at startup. With no env var
+set, reheat defaults to a JSON file store at `~/.reheat`.
 
 The web interface is a static SPA served by FastAPI. All pages share a
 single stylesheet and a common `api.js` module that is the single source
@@ -169,13 +190,14 @@ of truth for API endpoint calls.
 
 ---
 
-## Requirements
+## Optional dependencies
 
-- Python 3.10+
-- PostgreSQL (or JSON file backend for local development)
-- Google Search Console OAuth2 credentials
-- SerpAPI key (optional, for PAA enrichment)
-- OpenAI, Anthropic, or Marigold key (optional, for cluster summarisation)
+```bash
+pip install reheat[openai]       # OpenAI LLM support
+pip install reheat[anthropic]    # Anthropic LLM support
+pip install reheat[postgres]     # PostgreSQL backend (psycopg2)
+pip install reheat[all]          # all of the above
+```
 
 ---
 
@@ -183,6 +205,4 @@ of truth for API endpoint calls.
 
 MIT. See [LICENSE](LICENSE).
 
----
-
-Built by Edward Grundy [Bay Information Systems](https://bayis.co.uk)
+Built by [Edward Grundy](https://bayis.co.uk) at [Bay Information Systems](https://bayis.co.uk).

@@ -1,0 +1,22 @@
+[
+  {"query": "python seo tool",              "clicks": 42,  "impressions": 890,  "ctr": 0.047, "position": 8.2},
+  {"query": "seo content gap analysis",     "clicks": 31,  "impressions": 740,  "ctr": 0.042, "position": 9.1},
+  {"query": "search console query export",  "clicks": 28,  "impressions": 610,  "ctr": 0.046, "position": 7.8},
+  {"query": "keyword clustering python",    "clicks": 19,  "impressions": 520,  "ctr": 0.037, "position": 11.3},
+  {"query": "intent cluster seo",           "clicks": 15,  "impressions": 480,  "ctr": 0.031, "position": 12.1},
+  {"query": "content opportunity finder",   "clicks": 11,  "impressions": 390,  "ctr": 0.028, "position": 14.5},
+  {"query": "open source seo library",      "clicks": 9,   "impressions": 310,  "ctr": 0.029, "position": 15.2},
+  {"query": "serp data python",             "clicks": 7,   "impressions": 280,  "ctr": 0.025, "position": 16.4},
+  {"query": "seo gap tool free",            "clicks": 6,   "impressions": 240,  "ctr": 0.025, "position": 17.1},
+  {"query": "search intent analysis tool",  "clicks": 5,   "impressions": 210,  "ctr": 0.024, "position": 18.3},
+  {"query": "content gap seo automation",   "clicks": 4,   "impressions": 190,  "ctr": 0.021, "position": 19.7},
+  {"query": "python keyword analysis",      "clicks": 3,   "impressions": 170,  "ctr": 0.018, "position": 21.2},
+  {"query": "seo automation python script", "clicks": 3,   "impressions": 155,  "ctr": 0.019, "position": 22.5},
+  {"query": "gsc data analysis",            "clicks": 2,   "impressions": 140,  "ctr": 0.014, "position": 24.1},
+  {"query": "embedding seo queries",        "clicks": 2,   "impressions": 130,  "ctr": 0.015, "position": 25.3},
+  {"query": "umap text clustering",         "clicks": 1,   "impressions": 120,  "ctr": 0.008, "position": 27.0},
+  {"query": "kmeans query clustering",      "clicks": 1,   "impressions": 110,  "ctr": 0.009, "position": 28.4},
+  {"query": "seo topic modelling",          "clicks": 1,   "impressions": 100,  "ctr": 0.010, "position": 30.1},
+  {"query": "content schedule generator",   "clicks": 0,   "impressions": 90,   "ctr": 0.000, "position": 32.5},
+  {"query": "search console api python",    "clicks": 0,   "impressions": 80,   "ctr": 0.000, "position": 35.2}
+]

@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reheat"
+dynamic = ["version"]
+description = "Python CLI for SEO intent analysis and content gap discovery."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Edward Grundy", email = "ed@bayis.co.uk" }
+]
+requires-python = ">=3.10"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "psycopg2-binary",
+    "dynawrap",
+    "fastembed",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "umap-learn",
+    "google-auth",
+    "google-auth-httplib2",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "tqdm",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "httpx[http2]",
+]
+
+[project.optional-dependencies]
+openai = ["openai>=1.0"]
+anthropic = ["anthropic>=0.20"]
+dev = [
+    "build",
+    "twine",
+    "setuptools-scm>=8",
+    "black",
+    "flake8",
+    "isort",
+    "pytest",
+    "pytest-asyncio",
+]
+all = [
+    "openai>=1.0",
+    "anthropic>=0.20",
+]
+
+[project.urls]
+Homepage = "https://www.bayis.co.uk/reheat"
+Source = "https://github.com/bayinfosys/reheat"
+PyPI = "https://pypi.org/project/reheat"
+
+[project.scripts]
+reheat = "reheat.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["reheat*"]
+
+
+[tool.setuptools.package-data]
+"reheat" = ["static/*.html", "static/*.js", "static/*.css"]
+
+[tool.setuptools_scm]

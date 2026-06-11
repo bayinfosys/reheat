@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Payload
+from reheat.registry import Payload, command
 from reheat.state import USER_TABLE, get_user
 from reheat.state.user import UserState
 
@@ -46,7 +46,7 @@ def cmd_config_show(backend: DBBackend) -> dict:
         "default_source_id":  user.default_source_id,
         "embedding_provider": user.embedding_provider,
         "embedding_model":    user.embedding_model,
-        "summary_model":      user.summary_model,
+        "instruct_model":     user.instruct_model,
         "projection_method":  user.projection_method,
         "cluster_k":          user.cluster_k,
         "summarise_top_n":    user.summarise_top_n,

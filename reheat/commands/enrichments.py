@@ -1,9 +1,8 @@
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Resource
-from reheat.state.execution import Enrichment
 from reheat.commands.runs import _resolve_run
-from reheat.state import ENRICHMENTS_TABLE, get_user_id
+from reheat.registry import Resource, command
+from reheat.state import ENRICHMENTS_TABLE, Enrichment, get_user_id
 
 
 @command(help="List enrichments for a run")

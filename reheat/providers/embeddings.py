@@ -1,59 +1,148 @@
 import logging
-from reheat.providers.base import EmbeddingProvider
+import os
+from abc import ABC, abstractmethod
+from typing import List
+
+from reheat.errors import ConfigError, EmbeddingError
 from reheat.state.user import UserState
 
 logger = logging.getLogger(__name__)
 
 
-class ConfigError(Exception):
-    """Raised when provider configuration is invalid or incomplete."""
+class EmbeddingProvider(ABC):
+    provider_name: str = ""
+    model_name: str = ""
+
+    @abstractmethod
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """
+        Embed a list of text strings.
+        Returns a list of float vectors, one per input string.
+        Raises EmbeddingError on failure.
+        """
+        ...
+
+    @abstractmethod
+    def dimension(self) -> int:
+        """Return the dimensionality of the embedding vectors."""
+        ...
+
+
+class LocalEmbeddingProvider(EmbeddingProvider):
+    """
+    Embedding provider using fastembed with all-MiniLM-L6-v2.
+    No API key required. No torch dependency.
+    Model is downloaded on first use and cached by fastembed.
+    """
+
+    provider_name: str = "local"
+
+    DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+    DEFAULT_DIMENSION = 384
+
+    def __init__(self, model_name: str = DEFAULT_MODEL_NAME) -> None:
+        try:
+            from fastembed import TextEmbedding
+        except ImportError:
+            raise ImportError(
+                "fastembed is required for the local embedding provider. "
+                "Install with: pip install reheat[local]"
+            )
+        logger.info("loading local embedding model %s", model_name)
+        self.model_name = model_name
+        self._model = TextEmbedding(model_name=model_name)
+        logger.info("local embedding model loaded")
+
+    def embed(self, texts: List[str]) -> List[List[float]]:
+        if not texts:
+            return []
+        try:
+            logger.debug("embedding %d texts with local provider", len(texts))
+            vectors = list(self._model.embed(texts))
+            return [v.tolist() for v in vectors]
+        except Exception as e:
+            logger.exception("local embedding failed")
+            raise EmbeddingError(f"local embedding failed: {e}") from e
+
+    def dimension(self) -> int:
+        return self.DEFAULT_DIMENSION
+
+
+class OpenAIEmbeddingProvider(EmbeddingProvider):
+    provider_name: str = "openai"
+
+    DEFAULT_MODEL_NAME = "text-embedding-3-small"
+    DEFAULT_DIMENSION = 1536
+
+    def __init__(self, api_key: str, model_name: str = DEFAULT_MODEL_NAME) -> None:
+        raise NotImplementedError(
+            "OpenAIEmbeddingProvider is not yet implemented. "
+            "Install with: pip install reheat[openai]"
+        )
+
+    def embed(self, texts: List[str]) -> List[List[float]]:
+        raise NotImplementedError
+
+    def dimension(self) -> int:
+        return self.DEFAULT_DIMENSION
+
+
+class MarigoldEmbeddingProvider(EmbeddingProvider):
+    provider_name: str = "marigold"
+    DEFAULT_MODEL_NAME = "default"
+    DEFAULT_DIMENSION = 768
+
+    def __init__(
+        self,
+        api_key: str,
+        endpoint: str,
+        model_name: str = DEFAULT_MODEL_NAME,
+    ) -> None:
+        raise NotImplementedError(
+            "MarigoldEmbeddingProvider is not yet implemented. "
+            "Awaiting Marigold client library."
+        )
+
+    def embed(self, texts: List[str]) -> List[List[float]]:
+        raise NotImplementedError
+
+    def dimension(self) -> int:
+        return self.DEFAULT_DIMENSION
 
 
 def get_embedding_provider(user: UserState) -> EmbeddingProvider:
-    """
-    Construct the configured EmbeddingProvider from UserState.
-    Raises ConfigError if required keys are absent.
-    """
     provider = user.embedding_provider
     logger.debug("constructing embedding provider: %s", provider)
 
     if provider == "local":
-        from reheat.providers.local import LocalEmbeddingProvider
-
         return LocalEmbeddingProvider(
-            model_name=user.embedding_model or LocalEmbeddingProvider.MODEL_NAME
+            model_name=user.embedding_model or LocalEmbeddingProvider.DEFAULT_MODEL_NAME
         )
 
     if provider == "openai":
-        if not user.openai_api_key:
+        if not os.environ.get("OPENAI_API_KEY"):
             raise ConfigError(
-                "embedding_provider is 'openai' but openai_api_key is not set. "
-                "Run: reheat config set --key openai_api_key --value <key>"
+                "embedding_provider is 'openai' but OPENAI_API_KEY is not set."
             )
-        from reheat.providers.openai import OpenAIEmbeddingProvider
 
         return OpenAIEmbeddingProvider(
-            api_key=user.openai_api_key,
-            model_name=user.embedding_model,
+            model_name=user.embedding_model
+            or OpenAIEmbeddingProvider.DEFAULT_MODEL_NAME,
         )
 
     if provider == "marigold":
-        if not user.marigold_api_key:
+        if not os.environ.get("MARIGOLD_API_KEY"):
             raise ConfigError(
-                "embedding_provider is 'marigold' but marigold_api_key is not set. "
-                "Run: reheat config set --key marigold_api_key --value <key>"
+                "embedding_provider is 'marigold' but MARIGOLD_API_KEY is not set."
             )
-        if not user.marigold_endpoint:
+        if not os.environ.get("MARIGOLD_ENDPOINT"):
             raise ConfigError(
-                "embedding_provider is 'marigold' but marigold_endpoint is not set. "
-                "Run: reheat config set --key marigold_endpoint --value <url>"
+                "embedding_provider is 'marigold' but MARIGOLD_ENDPOINT is not set."
             )
-        from reheat.providers.marigold import MarigoldEmbeddingProvider
 
         return MarigoldEmbeddingProvider(
-            api_key=user.marigold_api_key,
-            endpoint=user.marigold_endpoint,
-            model_name=user.embedding_model,
+            model_name=user.embedding_model
+            or MarigoldEmbeddingProvider.DEFAULT_MODEL_NAME,
         )
 
     raise ConfigError(f"unknown embedding provider: {provider!r}")

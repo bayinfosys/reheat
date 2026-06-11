@@ -1,9 +1,9 @@
 import logging
 import sys
 
-from reheat.state import init_backend
-from reheat.commands import register_all_commands
 from reheat.adapters.argparse_adapter import build_parser, dispatch
+from reheat.commands import register_all_commands
+from reheat.state import init_backend
 
 
 def main():

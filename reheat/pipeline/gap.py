@@ -12,13 +12,13 @@ def owned_set(queries: list) -> Set[str]:
 
 def adjacent_map(adjacent_data: dict) -> Dict[str, List[str]]:
     """
-    Build seed -> [paa + related] map from adjacent enrichment data.
-    Input is the full adjacent enrichment data dict, which has the structure
-    {queries: {seed_query: {paa: [...], related: [...]}}}
+    Build seed -> [related] map from adjacent enrichment data.
+    Input is the merged dict keyed by query string:
+        {seed_query: {"related": [...]}}
     """
     result = {}
-    for query, data in adjacent_data.get("queries", {}).items():
-        queries = data.get("paa", []) + data.get("related", [])
+    for query, data in adjacent_data.items():
+        queries = data.get("related", [])
         if queries:
             result[query] = queries
     return result

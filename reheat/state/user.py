@@ -1,6 +1,7 @@
-from typing import ClassVar, List, Literal
-from pydantic import BaseModel, Field
+from typing import ClassVar, Literal
+
 from dynawrap import DBItem
+from pydantic import BaseModel
 
 
 class UserState(DBItem, BaseModel):
@@ -14,13 +15,17 @@ class UserState(DBItem, BaseModel):
     user_id: str = "default"
 
     # Provider preferences
+    # embedding
     embedding_provider: Literal["local", "openai", "marigold"] = "local"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    summary_model: str = "default"
+
+    # instruct
+    instruct_model: str = ""
+
     projection_method: Literal["umap", "tsne", "pca"] = "umap"
 
     # Analysis parameters
-    cluster_k: int = 32
+    cluster_k: int = 12
     summarise_top_n: int = 10
     fetch_days: int = 90
     fetch_limit: int = 25000  # google limit

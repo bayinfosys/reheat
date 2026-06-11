@@ -1,41 +1,21 @@
-import logging
-import sys
 import argparse
 import inspect
 import json
+import logging
+import sys
 from typing import get_type_hints
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import Resource, Payload, registry
+from reheat.registry import Payload, Resource, registry
 
 
 def _default_output(data, as_json: bool) -> None:
-    """Generic output formatter. JSON or pretty-printed."""
     if as_json or data is None:
         print(json.dumps(data, indent=2, default=str))
         return
-    if isinstance(data, list):
-        if not data:
-            print("(no results)")
-            return
-        if data and isinstance(data[0], dict):
-            keys = list(data[0].keys())
-            widths = {
-                k: max(len(k), max(len(str(r.get(k, ""))) for r in data))
-                for k in keys
-            }
-            header = "  ".join(k.upper().ljust(widths[k]) for k in keys)
-            print(header)
-            print("-" * len(header))
-            for row in data:
-                print("  ".join(str(row.get(k, "")).ljust(widths[k]) for k in keys))
-    elif isinstance(data, dict):
-        for k, v in data.items():
-            if not isinstance(v, (list, dict)):
-                print(f"  {k}: {v}")
     else:
-        print(data)
+        raise ValueError("only json output is supported")
 
 
 def _unwrap_annotation(annotation) -> type:
@@ -58,9 +38,7 @@ def _add_kwargs(p: argparse.ArgumentParser, fn) -> None:
             continue
         annotation = hints.get(name, str)
         default = (
-            param.default
-            if param.default is not inspect.Parameter.empty
-            else None
+            param.default if param.default is not inspect.Parameter.empty else None
         )
         flag = "--json" if name == "as_json" else f"--{name.replace('_', '-')}"
         p.add_argument(flag, dest=name, **_param_to_argparse(annotation, default))
@@ -121,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         dest="as_json",
         action="store_true",
+        default=True,
         help="Output as JSON (machine-readable)",
     )
 
@@ -140,10 +119,10 @@ def build_parser() -> argparse.ArgumentParser:
             continue
 
         top_p = top_sub.add_parser(top, help=top_fn._cli_help if top_fn else "")
-        mid_sub = top_p.add_subparsers(
-            dest=f"{top}_command", metavar="subcommand"
-        )
-        mid_sub.required = True
+        if top_fn:
+            _add_kwargs(top_p, top_fn)
+        mid_sub = top_p.add_subparsers(dest=f"{top}_command", metavar="subcommand")
+        mid_sub.required = top_fn is None
 
         for mid, mid_group in sorted(children.items()):
             if not isinstance(mid_group, dict):
@@ -188,15 +167,13 @@ def dispatch(args: argparse.Namespace, backend: DBBackend) -> None:
         logging.getLogger(__name__).error("unknown command %r", path)
         sys.exit(1)
 
-    as_json = getattr(args, "as_json", False)
-
     sig = inspect.signature(fn)
     kwargs = {
         name: getattr(args, name)
         for name, param in sig.parameters.items()
-        if param.kind == inspect.Parameter.KEYWORD_ONLY
-        and hasattr(args, name)
+        if param.kind == inspect.Parameter.KEYWORD_ONLY and hasattr(args, name)
     }
 
     result = fn(backend, **kwargs)
-    _default_output(result, as_json)
+
+    _default_output(result, args.as_json)

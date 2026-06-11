@@ -2,9 +2,9 @@ import logging
 
 from dynawrap.backends.base import DBBackend
 
-from reheat.registry import command, Resource, Payload
-from reheat.state import MODELS_TABLE, get_user_id
-from reheat.state.execution import ClusterModel, ClusterBackbone, ModelRuns
+from reheat.registry import Payload, Resource, command
+from reheat.state import (MODELS_TABLE, ClusterBackbone, ClusterModel,
+                          ModelRuns, get_user_id)
 
 logger = logging.getLogger(__name__)
 

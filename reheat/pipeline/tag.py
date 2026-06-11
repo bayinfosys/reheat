@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
-from reheat.state.execution import QueryRecord
+
+from reheat.state import QueryRecord
 
 AUTO_TAG_PREFIX = "auto:"
 USER_TAG_PREFIX = "user:"
@@ -18,8 +19,8 @@ def auto_tag(record: QueryRecord, adjacent_data: Optional[dict] = None) -> List[
     if record.clicks == 0 and record.impressions < 2:
         tags.append("auto:low-signal")
     if adjacent_data:
-        query_serp = adjacent_data.get("queries", {}).get(record.query, {})
-        if not query_serp.get("paa") and not query_serp.get("related"):
+        query_serp = adjacent_data.get(record.query, {})
+        if not query_serp.get("related"):
             tags.append("auto:no-serp-data")
     return tags
 
