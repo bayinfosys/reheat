@@ -45,9 +45,11 @@ def init_backend(location: str = None) -> DBBackend:
         logger.info("using dynamodb backend")
         return DynamoDBBackend(boto3.client("dynamodb"))
 
-    from dynawrap.backends.json_file import JsonFileBackend
-    logger.info("using json file backend at %s", loc)
-    return JsonFileBackend(loc)
+    if loc is None:
+        raise ValueError(
+            "no backend configured. Set DATABASE_URL to a postgres connection "
+            "string or CONFIG_LOCATION to a directory path."
+        )
 
 
 def get_user(backend: DBBackend) -> UserState:
