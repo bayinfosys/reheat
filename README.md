@@ -1,16 +1,58 @@
-![reheat](imgs/reheat02-upscale01.jpeg)
+![Reheat](imgs/reheat02-upscale01.jpeg)
 
-# reheat
+# Reheat
 
-Python CLI for SEO analysis. Pulls search queries from Google Search Console,
-enriches them with related searches via SerpAPI, clusters by semantic intent,
-and surfaces content gaps and opportunities.
+**Semantic Intent Clustering + Content Gap Analysis for Google Search Console**
 
-Built by [Edward Grundy](https://bayis.co.uk) at [Bay Information Systems](https://bayis.co.uk).
+Reheat turns the flat, overwhelming list of queries in Google Search Console into **clear, actionable insights** about what your audience actually wants.
 
-- Install: `pip install reheat`
-- Source: [github.com/bayinfosys/reheat](https://github.com/bayinfosys/reheat)
-- PyPI: [pypi.org/project/reheat](https://pypi.org/project/reheat)
+It pulls your GSC data, enriches it with related searches and People Also Ask, clusters queries by semantic intent, and shows you high-value topics and content opportunities in a local web dashboard.
+
+### Screenshots from my own site (bayis.co.uk)
+
+![High-Value Topics](imgs/high-value-topics.png)
+![Content Schedule](imgs/content-schedule.png)
+![Intent Map](imgs/intent-map.png)
+
+## Why people use Reheat
+
+- Discover which **topics** your content already serves across many queries
+- Find high-potential content gaps ranked by opportunity
+- Get a practical content expansion schedule
+- Understand real user intent instead of guessing
+- Everything runs locally (or with Postgres)
+
+Built and used daily by me on my own technical/ML content site.
+
+---
+
+## Quick Start
+
+```bash
+pip install reheat
+```
+
+Full setup instructions (including Google Search Console OAuth and SerpAPI key) -> [GETTING_STARTED.md](GETTING_STARTED.md)
+
+Once set up, the basic flow is:
+```bash
+reheat fetch && reheat enrich && reheat analyse && reheat serve
+```
+
+Then open `localhost:8000`
+
+## Key Features
+
++ Google Search Console data import
++ SerpAPI enrichment (related searches + PAA)
++ Local embeddings + semantic clustering
++ LLM cluster labelling (OpenAI / Anthropic / Marigold)
++ High-value topic detection
++ Content expansion recommendations
++ Interactive intent map (UMAP scatter plot)
++ Local FastAPI web dashboard
+
+Continue reading for full setup, CLI reference, and architecture
 
 ---
 
