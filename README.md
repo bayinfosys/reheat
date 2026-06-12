@@ -222,11 +222,10 @@ through both the CLI and the HTTP API.
 embedding, clustering, gap analysis, report building. No persistence, no
 side effects.
 
-**Persistence** uses [dynawrap](https://github.com/bayinfosys/dynawrap),
+**Persistence** uses [dynawrap](https://github.com/bayinfosys/aws-dynamodb-wrapper),
 a lightweight key-value library with identical interfaces over PostgreSQL
 and DynamoDB. Tables are passed at call time; models are backend-agnostic.
-The backend is selected from `DATABASE_URL` at startup. With no env var
-set, reheat defaults to a JSON file store at `~/.reheat`.
+The backend is selected from `DATABASE_URL` at startup.
 
 The web interface is a static SPA served by FastAPI. All pages share a
 single stylesheet and a common `api.js` module that is the single source
