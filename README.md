@@ -10,9 +10,9 @@ It pulls your GSC data, enriches it with related searches and People Also Ask, c
 
 ### Screenshots from my own site (bayis.co.uk)
 
-![High-Value Topics](imgs/high-value-topics.png)
-![Content Schedule](imgs/content-schedule.png)
-![Intent Map](imgs/intent-map.png)
+![High-Value Topics](docs/serve-high-value-topics.gif)
+![Content Schedule](docs/serve-content-schedule.gif)
+![Intent Map](docs/serve-intent-map.gif)
 
 ## Why people use Reheat
 
