@@ -41,7 +41,11 @@ def _add_kwargs(p: argparse.ArgumentParser, fn) -> None:
             param.default if param.default is not inspect.Parameter.empty else None
         )
         flag = "--json" if name == "as_json" else f"--{name.replace('_', '-')}"
-        p.add_argument(flag, dest=name, **_param_to_argparse(annotation, default))
+        is_resource = getattr(annotation, "__origin__", None) is Resource
+        if is_resource:
+            p.add_argument(flag, dest=name, type=str, required=True)
+        else:
+            p.add_argument(flag, dest=name, **_param_to_argparse(annotation, default))
 
 
 def _param_to_argparse(annotation, default) -> dict:

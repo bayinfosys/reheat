@@ -27,15 +27,28 @@ def init_backend(location: str = None) -> DBBackend:
         location
         or os.environ.get("DATABASE_URL")
         or os.environ.get("CONFIG_LOCATION")
-        or str(Path.home() / ".reheat")
     )
+
+    if not loc:
+        raise ValueError(
+            "no backend configured. Set DATABASE_URL to a postgres connection string."
+        )
 
     if loc.startswith("postgresql://") or loc.startswith("postgres://"):
         import psycopg2
         from dynawrap.backends.postgres import PostgresBackend
-        conn = psycopg2.connect(loc)
+        try:
+            conn = psycopg2.connect(loc, connect_timeout=5)
+            conn.cursor().execute("SELECT 1")
+        except psycopg2.OperationalError as e:
+            raise RuntimeError(
+                f"could not connect to postgres at {loc!r}: {e}\n"
+                "Check the database is running and DATABASE_URL is correct."
+            ) from e
+
         for table in TABLES:
             PostgresBackend.create_table(conn, table)
+
         logger.info("using postgres backend")
         return PostgresBackend(conn)
 

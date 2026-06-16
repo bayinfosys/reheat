@@ -27,6 +27,10 @@ def main():
         print(f"error: failed to initialise backend: {e}")
         sys.exit(1)
 
+    if not backend:
+        print("error: failed to obtain backend")
+        sys.exit(2)
+
     try:
         dispatch(args, backend)
     except KeyboardInterrupt:
