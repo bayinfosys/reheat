@@ -113,3 +113,50 @@ def cmd_models_describe(
     updated = model.model_copy(update={"description": description})
     backend.save(MODELS_TABLE, updated)
     return {"model_id": model_id, "description": description}
+
+
+@command(help="Show cluster assignments for a run")
+def cmd_models_assignments_show(
+    backend: DBBackend,
+    *,
+    model_id: Resource[str] = "",
+    run_id: Payload[str] = "",
+) -> list:
+    """
+    Return per-query cluster assignments for a (model, run) pair, joined
+    with the cluster label from the model's labels dict.
+
+    Useful for exporting cluster membership to external tools:
+
+        reheat models assignments show --model-id <id> --run-id <id> \
+          | jq -r '.[] | [.query, .cluster_id, .label] | @csv'
+    """
+    from reheat.commands.runs import _resolve_run
+    from reheat.state import ClusterAssignments
+
+    if not model_id:
+        raise ValueError("model_id is required")
+
+    run = _resolve_run(backend, run_id or None)
+    model = _get_model(backend, model_id)
+
+    record = backend.get(
+        MODELS_TABLE, ClusterAssignments,
+        user_id=get_user_id(backend),
+        model_id=model_id,
+        run_id=run.run_id,
+    )
+    if record is None:
+        raise ValueError(
+            f"no assignments for model {model_id!r} on run {run.run_id!r}"
+        )
+
+    return [
+        {
+            "query":      a["query"],
+            "cluster_id": a["cluster_id"],
+            "label":      model.labels.get(str(a["cluster_id"]), ""),
+            "is_adjacent": a.get("is_adjacent", False),
+        }
+        for a in record.assignments
+    ]

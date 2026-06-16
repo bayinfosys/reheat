@@ -29,14 +29,30 @@ def cmd_enrichments_show(
     *,
     run_id: Resource[str] = "",
     enrichment_type: Resource[str] = "",
+    source_id: str = None,
 ) -> dict:
     if not enrichment_type:
         raise ValueError("enrichment_type is required")
     run = _resolve_run(backend, run_id or None)
-    enrichment = backend.get(
-        ENRICHMENTS_TABLE, Enrichment,
-        user_id=get_user_id(backend), run_id=run.run_id, enrichment_type=enrichment_type,
-    )
+    uid = get_user_id(backend)
+
+    if source_id:
+        enrichment = backend.get(
+            ENRICHMENTS_TABLE, Enrichment,
+            user_id=uid, run_id=run.run_id,
+            enrichment_type=enrichment_type, source_id=source_id,
+        )
+    else:
+        results = sorted(
+            backend.query(
+                ENRICHMENTS_TABLE, Enrichment,
+                user_id=uid, run_id=run.run_id,
+                enrichment_type=enrichment_type,
+            ),
+            key=lambda e: e.created_at or "",
+        )
+        enrichment = results[-1] if results else None
+
     if enrichment is None:
         raise ValueError(
             f"enrichment {enrichment_type!r} not found for run {run.run_id}"
@@ -44,6 +60,7 @@ def cmd_enrichments_show(
     return {
         "run_id":          run.run_id,
         "enrichment_type": enrichment.enrichment_type,
+        "source_id":       enrichment.source_id,
         "layer":           enrichment.layer,
         "derived_from":    enrichment.derived_from,
         "created_at":      enrichment.created_at.isoformat() if enrichment.created_at else None,
